@@ -4,19 +4,21 @@ import matplotlib as mp
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
-
+#creating dictionaries for labeling purposes
 variableDictionary = {
 
     'opc_pm25':'PM2.5 from Optical Particle Counter (ug/m3)',
     'opc_pm10':'PM10 from Optical Particle Counter (ug/m3)',
-    'pm25_env':'PM2.5 from Nephelometer (ug/m3)',
-    'pm10_env':'PM10 from Nephelometer (ug/m3)',
     'timestamp_iso':'Time (UTC)'
     }
 labelDictionary ={}
+locationDictionary={}
+treatmentDictionary={}
 
+#Tools for analyzing data from QuantAir Modulair-PM sensors
 class quantAirTools:
 
+#Creating libraries for data joining purposes
     dataLibrary = {}
     deviceLibrary = {}
     dataJoin = pd.DataFrame()
@@ -33,38 +35,76 @@ class quantAirTools:
         dataList = []
         resampledList = []
 
-
         for dataset in datasets:
             #reading data from csv, pulling device information from top of file
             device = pd.read_csv(dataset,delimiter=',',engine='python',on_bad_lines='skip')
             # Skip first 3 rows (deviceModel, deviceID, deviceSN), then row 0 becomes the header
             data = pd.read_csv(dataset,delimiter=',',engine='python',skiprows=[0,1,2],header=0)
             #removes columns not being used
-            data = data[['timestamp_iso','opc_pm25','pm25_env','opc_pm10','pm10_env','flag']]
+            data = data[['timestamp_iso','sample_rh','sample_temp','opc_pm25','opc_pm10']]
             #updating timestamps to datetime to allow potting over time
             data.timestamp_iso = pd.to_datetime(data.timestamp_iso,yearfirst=True)
              #Adding boolean mask to filter data to only include sampling period
             timeMask = (data.timestamp_iso >= startTime) & (data.timestamp_iso <= endTime)
             data = data[timeMask]
+            #sorting values chronologically to ensure timestamp numeric variable will line up
             data = data.sort_values(by='timestamp_iso')
-            dataResampled = data.resample('1min',on='timestamp_iso').mean()
-            #adding a suffix to indicate the file from which each dataset comes from
-            #adding suffix to columns for differentiation of source
-            data = data.add_suffix(f'_{device.iat[1,1]}')
-            dataResampled = dataResampled.add_suffix(f'_{device.iat[1,1]}')
-            #adding data to data list
+            #Resamples data to 1 minute intervals to reduce noise for graphics
+            dataResampled = data.set_index('timestamp_iso').resample('1min').mean()
+            #resetting the index to allow access to 'timestamp-iso' variable
+            dataResampled = dataResampled.reset_index()
+            #adding timestamp index variable
+            dataResampled['timeStamp'] = range(1, len(dataResampled)+1)
+            #adding separate date and time columns
+            dataResampled['Time'] = dataResampled['timestamp_iso'].dt.time
+            dataResampled['Date'] = dataResampled['timestamp_iso'].dt.date
+            
+            #adding instrument ID from device info, split info to include number only
+            instrumentID = device.iat[1,1]
+            idParts = instrumentID.split('00')
+            instrumentID = idParts[1]
+            dataResampled['instrumentID'] = instrumentID
+
+            #adding treatment if set via QASetTreatments
+            dictKey = str(dataResampled.Date[1])
+            if dictKey in treatmentDictionary.keys():
+                dataResampled['treatment'] = treatmentDictionary[dictKey]
+            else:
+                dataResampled['treatment'] = 'Unknown'
+
+            #adding trial if set in QASetLabels
+            if dictKey in labelDictionary.keys():
+                dataResampled['Trial'] = labelDictionary[dictKey]
+            else:
+                dataResampled['Trial'] = 'Unknown'
+            
+            #setting location labels based on instrument ID as outlines in QASetLocation
+            dataResampled['proximityToXRoad'] = locationDictionary[f'{instrumentID}']
+
+            #reorganizing columns for readability
+            dataResampled = dataResampled[['timeStamp','instrumentID','Date','Time','treatment','Trial','proximityToXRoad','sample_rh','sample_temp','opc_pm25','opc_pm10']]
+            #renaming vars to fit codebook guidelines
+            cleanAxis = ['Time_Stamp','Instrument_ID','Date','Time','Condition','Trial','Prox_to_xroad','Relative_Humidity','Temperature','PM25','PM10']
+            dataResampled = dataResampled.set_axis(cleanAxis,axis=1)
             dataList.append(data)
             resampledList.append(dataResampled)
-            quantAirTools.dataLibrary[dataset] = [data, device]
-
-        resampleJoin = pd.concat(resampledList, axis=1)
-        dataJoin = pd.concat(dataList, axis=1)
-        dataJoin.to_csv(outputfile)
-        resampleJoin.to_csv(f'Resampled{outputfile}')
-            
+        #joining datasets if more than one is passed (May be removed: see QAJoinCleaned)
+        if len(dataList) > 1:
+            #adding a suffix to indicate the file from which each dataset comes from
+            data = data.add_suffix(f'_{device.iat[1,1]}')
+            dataResampled = dataResampled.add_suffix(f'_{device.iat[1,1]}')
+            #joining data to make a wideformat table
+            resampleJoin = pd.concat(resampledList, axis=1)
+            dataJoin = pd.concat(dataList, axis=1)
+            dataJoin.to_csv(outputfile)
+            resampleJoin.to_csv(f'Resampled{outputfile}')
+        #returning cleaned data if only one is passed
+        else:
+            data.to_csv(outputfile)
+            dataResampled.to_csv(f'Resampled{outputfile}',index=False)
         return outputfile
     
-    #adding plotting tool
+    #adding plotting tool (Being Reworked!)
     def QAPlotter(inputFile,startTime,endTime,var,dataset_labels=None):
 
         # Read the merged CSV file created by QAcleanToCSV
@@ -139,12 +179,20 @@ class quantAirTools:
         plt.tight_layout()
 
         # Display the plot
-        plt.show()
-
-    def QASetLabels(sensor,location):       
-        labelDictionary[f'{sensor}'] = f'{location}'
+        plt.show()   
+    #used to set location based on sensor (3-digit ID)
+    def QASetLocation(sensor,location):
+        locationDictionary[f'{sensor}'] = f'{location}'
+        return locationDictionary
+    #used to set labels for which trial data is from pass date in YYYY-MM-DD format as key
+    def QASetLabels(sensor,label):       
+        labelDictionary[f'{sensor}'] = f'{label}'
         return labelDictionary
-    
+    #used to set treatment labels based on date
+    def QASetTreatments(date,treatment):
+        treatmentDictionary[f'{date}'] = f'{treatment}'
+        return treatmentDictionary
+    #used to check for autocorrelation (IN PROGRESS)
     def QAAutocorrelation(dataset,var):
 
         dataset = pd.read_csv(dataset)
@@ -159,7 +207,7 @@ class quantAirTools:
         print(result)
 
         return(result)
-    
+    #used to check normality (IN PROGRESS)
     def QANormality(dataset,var):
 
          dataset = pd.read_csv(dataset)
@@ -173,7 +221,7 @@ class quantAirTools:
          print(result)
 
          return(result)
-
+    #runs a Mann Whitney U test of selected variables (IN PROGRESS)
     def QAMannWhitney(dataset,var1,var2):
 
         dataset = pd.read_csv(dataset)
@@ -183,10 +231,116 @@ class quantAirTools:
         
         test = sm.stats.nonparametric.rank_compare_2indep(var1, var2, use_t = True)
         result = pd.Series(test[0:2])
+    #Joins cleaned data in long table format, returns csv of completed table
+    def QAJoinCleaned(outputfile,*datasets):
+    
+        dataList=[]
+
+        for dataset in datasets:
+            data = pd.read_csv(dataset,delimiter=',',engine='python',header=0)
+            dataList.append(data)
+        output = pd.concat(dataList,axis=0)
+        output.to_csv(f'{outputfile}',index=False)
+
+#tools to clean and analyze purpleair data
+class purpleAirTools:
+    #cleans purpleair data
+    def PAclean(outputfile,startTime,endTime,dataset):  
+        #reading in data and filtering to timestamp and IAQ
+        data = pd.read_csv(dataset,delimiter=',',engine='python')
+        data = data[['UTCDateTime','gas']]
+        #converting timestamp column to datetime variable
+        data['UTCDateTime'] = pd.to_datetime(data['UTCDateTime'], utc=True, yearfirst=True)
+        #splitting datetime variale into date and time
+        data['Date'] = data['UTCDateTime'].dt.date            
+        data['Time'] = data['UTCDateTime'].dt.time
+        #using a mask to crop data to testing period
+        timeMask = (data['UTCDateTime'] >= startTime) & (data['UTCDateTime'] <= endTime)
+        data = data[timeMask]
+        #sorting data chronologically to ensure timestamp index lines up properly
+        data = data.sort_values(by='UTCDateTime')
+        data['Time_Stamp'] = range(1, len(data) + 1)
+        #adding instrument ID (only one used so single definition is ok)
+        data['Instrument_ID'] = 'PurpleAir_Zen'
+        #adding location (stayed in only one location)
+        data['Prox_to_xroad'] = 'Away'
+        #resetting index to ensure no columns were moved to index
+        data = data.reset_index()
+        #using dictionary keys to set treatment and trial labels
+        dictKey = str((data.Date[1]))
+        print(dictKey)
+        if dictKey in treatmentDictionary.keys():
+            data['treatment'] = treatmentDictionary[dictKey]
+        else:
+            data['treatment'] = 'Unknown'
+        if dictKey in labelDictionary.keys():
+            data['Trial'] = labelDictionary[dictKey]
+        else:
+            data['Trial'] = 'Unknown'
+        #reorganizing columns for readability 
+        data = data[['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','treatment','Trial','gas']]
+        #renaming columns to line up with codebook
+        cleanedAxis = ['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','Condition','Trial','IAQ']
+        data = data.set_axis(cleanedAxis,axis=1)
+        #removes whitespace from IAQ column
+        data['IAQ'] = data['IAQ'].str.replace(' ','')
+        #changes to float
+        data['IAQ'] = pd.to_numeric(data['IAQ'], errors='coerce')
+        #returns cleaned data
+        data.to_csv(f'{outputfile}', index=False)
+
+    #joins cleaned purpleair datesets in long table format
+    def PAJoin(outputfile,*datasets):
+        dataList = []
+        for dataset in datasets:
+            data = pd.read_csv(dataset)
+            dataList.append(data)
+        JoinedData = pd.concat(dataList, axis=0)
+        JoinedData.to_csv(f'{outputfile}',index=False)
+
+#setting location of each sensor for proximity to cross road variable
+quantAirTools.QASetLocation('378', 'Near')
+quantAirTools.QASetLocation('384','Away')
+
+#setting the treatment based on the date
+quantAirTools.QASetTreatments(date='2025-10-25',treatment='Control')
+quantAirTools.QASetTreatments(date='2025-10-26',treatment='Intervention')
+quantAirTools.QASetTreatments(date='2025-11-01',treatment='Control')
+quantAirTools.QASetTreatments(date='2025-11-02',treatment='Intervention')
+
+#setting which sampling period data originates from based on date
+quantAirTools.QASetLabels('2025-10-25','Trial 1')
+quantAirTools.QASetLabels('2025-10-26','Trial 1')
+quantAirTools.QASetLabels('2025-11-01','Trial 2')
+quantAirTools.QASetLabels('2025-11-02','Trial 2')
 
 
+#cleaning modulair data
+quantAirTools.QAcleanToCSV('NearControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00378_10252025.csv')
+quantAirTools.QAcleanToCSV('NearInterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00378_10262025.csv')
+quantAirTools.QAcleanToCSV('AwayControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00384_10252025.csv')
+quantAirTools.QAcleanToCSV('AwayInterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00384_10262025.csv')
+quantAirTools.QAcleanToCSV('NearControlTrial2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00378_11012025.csv')
+quantAirTools.QAcleanToCSV('NearInterventionTrial2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00378_11022025.csv')
+quantAirTools.QAcleanToCSV('AwayControlTrial2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00384_11012025.csv')
+quantAirTools.QAcleanToCSV('AwayInterventionTrial2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00384_11022025.csv')
 
-quantAirTools.QAcleanToCSV('CandleTest.csv','2025-11-01 01:00:00','2025-11-01 04:00:00','CandleTest00378-1101.csv','CandleTest00384-1101.csv')
-quantAirTools.QASetLabels('MOD-PM-00384','Location 1')
-quantAirTools.QASetLabels('MOD-PM-00378','Location 2')
-quantAirTools.QAPlotter('ResampledCandleTest.csv','2025-11-01 01:00:00','2025-11-01 04:00:00','opc_pm25')
+#joining modulair data
+quantAirTools.QAJoinCleaned('masterList.csv',
+                            'ResampledNearControlTrial1.csv',
+                            'ResampledNearInterventionTrial1.csv',
+                            'ResampledAwayControlTrial1.csv',
+                            'ResampledAwayInterventionTrial1.csv',
+                            'ResampledNearControlTrial2.csv',
+                            'ResampledNearInterventionTrial2.csv',
+                            'ResampledAwayControlTrial2.csv',
+                            'ResampledAwayInterventionTrial2.csv')
+
+#cleaning purpleair data
+purpleAirTools.PAclean('ControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59','PA_20251025.csv')
+purpleAirTools.PAclean('InterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59','PA_20251026.csv')
+purpleAirTools.PAclean('ControlTrial2.csv','2025-11-01 19:00:00', '2025-11-01 20:59:59','PA_20251101.csv')
+purpleAirTools.PAclean('InterventionTrial2.csv','2025-11-02 20:00:00', '2025-11-02 21:59:59','PA_20251102.csv')
+
+#joining cleaned purpleair data into master list
+purpleAirTools.PAJoin('PurpleAirMaster.csv','ControlTrial1.csv','InterventionTrial1.csv','ControlTrial2.csv','InterventionTrial2.csv')
