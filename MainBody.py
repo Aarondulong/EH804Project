@@ -72,19 +72,19 @@ class quantAirTools:
             else:
                 dataResampled['treatment'] = 'Unknown'
 
-            #adding trial if set in QASetLabels
+            #adding Session if set in QASetLabels
             if dictKey in labelDictionary.keys():
-                dataResampled['Trial'] = labelDictionary[dictKey]
+                dataResampled['Session'] = labelDictionary[dictKey]
             else:
-                dataResampled['Trial'] = 'Unknown'
+                dataResampled['Session'] = 'Unknown'
             
             #setting location labels based on instrument ID as outlines in QASetLocation
             dataResampled['proximityToXRoad'] = locationDictionary[f'{instrumentID}']
 
             #reorganizing columns for readability
-            dataResampled = dataResampled[['timeStamp','instrumentID','Date','Time','treatment','Trial','proximityToXRoad','sample_rh','sample_temp','opc_pm25','opc_pm10']]
+            dataResampled = dataResampled[['timeStamp','instrumentID','Date','Time','treatment','Session','proximityToXRoad','sample_rh','sample_temp','opc_pm25','opc_pm10']]
             #renaming vars to fit codebook guidelines
-            cleanAxis = ['Time_Stamp','Instrument_ID','Date','Time','Condition','Trial','Prox_to_xroad','Relative_Humidity','Temperature','PM25','PM10']
+            cleanAxis = ['Time_Stamp','Instrument_ID','Date','Time','Condition','Session','Prox_to_xroad','Relative_Humidity','Temperature','PM25','PM10']
             dataResampled = dataResampled.set_axis(cleanAxis,axis=1)
             dataList.append(data)
             resampledList.append(dataResampled)
@@ -184,7 +184,7 @@ class quantAirTools:
     def QASetLocation(sensor,location):
         locationDictionary[f'{sensor}'] = f'{location}'
         return locationDictionary
-    #used to set labels for which trial data is from pass date in YYYY-MM-DD format as key
+    #used to set labels for which Session data is from pass date in YYYY-MM-DD format as key
     def QASetLabels(sensor,label):       
         labelDictionary[f'{sensor}'] = f'{label}'
         return labelDictionary
@@ -266,7 +266,7 @@ class purpleAirTools:
         data['Prox_to_xroad'] = 'Away'
         #resetting index to ensure no columns were moved to index
         data = data.reset_index()
-        #using dictionary keys to set treatment and trial labels
+        #using dictionary keys to set treatment and Session labels
         dictKey = str((data.Date[1]))
         print(dictKey)
         if dictKey in treatmentDictionary.keys():
@@ -274,13 +274,13 @@ class purpleAirTools:
         else:
             data['treatment'] = 'Unknown'
         if dictKey in labelDictionary.keys():
-            data['Trial'] = labelDictionary[dictKey]
+            data['Session'] = labelDictionary[dictKey]
         else:
-            data['Trial'] = 'Unknown'
+            data['Session'] = 'Unknown'
         #reorganizing columns for readability 
-        data = data[['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','treatment','Trial','gas']]
+        data = data[['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','treatment','Session','gas']]
         #renaming columns to line up with codebook
-        cleanedAxis = ['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','Condition','Trial','IAQ']
+        cleanedAxis = ['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','Condition','Session','IAQ']
         data = data.set_axis(cleanedAxis,axis=1)
         #removes whitespace from IAQ column
         data['IAQ'] = data['IAQ'].str.replace(' ','')
@@ -309,38 +309,38 @@ quantAirTools.QASetTreatments(date='2025-11-01',treatment='Control')
 quantAirTools.QASetTreatments(date='2025-11-02',treatment='Intervention')
 
 #setting which sampling period data originates from based on date
-quantAirTools.QASetLabels('2025-10-25','Trial 1')
-quantAirTools.QASetLabels('2025-10-26','Trial 1')
-quantAirTools.QASetLabels('2025-11-01','Trial 2')
-quantAirTools.QASetLabels('2025-11-02','Trial 2')
+quantAirTools.QASetLabels('2025-10-25','Session 1')
+quantAirTools.QASetLabels('2025-10-26','Session 1')
+quantAirTools.QASetLabels('2025-11-01','Session 2')
+quantAirTools.QASetLabels('2025-11-02','Session 2')
 
 
 #cleaning modulair data
-quantAirTools.QAcleanToCSV('NearControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00378_10252025.csv')
-quantAirTools.QAcleanToCSV('NearInterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00378_10262025.csv')
-quantAirTools.QAcleanToCSV('AwayControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00384_10252025.csv')
-quantAirTools.QAcleanToCSV('AwayInterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00384_10262025.csv')
-quantAirTools.QAcleanToCSV('NearControlTrial2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00378_11012025.csv')
-quantAirTools.QAcleanToCSV('NearInterventionTrial2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00378_11022025.csv')
-quantAirTools.QAcleanToCSV('AwayControlTrial2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00384_11012025.csv')
-quantAirTools.QAcleanToCSV('AwayInterventionTrial2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00384_11022025.csv')
+quantAirTools.QAcleanToCSV('NearControlSession1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00378_10252025.csv')
+quantAirTools.QAcleanToCSV('NearInterventionSession1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00378_10262025.csv')
+quantAirTools.QAcleanToCSV('AwayControlSession1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59', 'MOD-PM-00384_10252025.csv')
+quantAirTools.QAcleanToCSV('AwayInterventionSession1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59', 'MOD-PM-00384_10262025.csv')
+quantAirTools.QAcleanToCSV('NearControlSession2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00378_11012025.csv')
+quantAirTools.QAcleanToCSV('NearInterventionSession2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00378_11022025.csv')
+quantAirTools.QAcleanToCSV('AwayControlSession2.csv','2025-11-01 19:00:00','2025-11-01 20:59:59','MOD-PM-00384_11012025.csv')
+quantAirTools.QAcleanToCSV('AwayInterventionSession2.csv','2025-11-02 20:00:00','2025-11-02 21:59:59','MOD-PM-00384_11022025.csv')
 
 #joining modulair data
-quantAirTools.QAJoinCleaned('masterList.csv',
-                            'ResampledNearControlTrial1.csv',
-                            'ResampledNearInterventionTrial1.csv',
-                            'ResampledAwayControlTrial1.csv',
-                            'ResampledAwayInterventionTrial1.csv',
-                            'ResampledNearControlTrial2.csv',
-                            'ResampledNearInterventionTrial2.csv',
-                            'ResampledAwayControlTrial2.csv',
-                            'ResampledAwayInterventionTrial2.csv')
+quantAirTools.QAJoinCleaned('ModulairMaster.csv',
+                            'ResampledNearControlSession1.csv',
+                            'ResampledNearInterventionSession1.csv',
+                            'ResampledAwayControlSession1.csv',
+                            'ResampledAwayInterventionSession1.csv',
+                            'ResampledNearControlSession2.csv',
+                            'ResampledNearInterventionSession2.csv',
+                            'ResampledAwayControlSession2.csv',
+                            'ResampledAwayInterventionSession2.csv')
 
 #cleaning purpleair data
-purpleAirTools.PAclean('ControlTrial1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59','PA_20251025.csv')
-purpleAirTools.PAclean('InterventionTrial1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59','PA_20251026.csv')
-purpleAirTools.PAclean('ControlTrial2.csv','2025-11-01 19:00:00', '2025-11-01 20:59:59','PA_20251101.csv')
-purpleAirTools.PAclean('InterventionTrial2.csv','2025-11-02 20:00:00', '2025-11-02 21:59:59','PA_20251102.csv')
+purpleAirTools.PAclean('ControlSession1.csv','2025-10-25 19:00:00', '2025-10-25 20:59:59','PA_20251025.csv')
+purpleAirTools.PAclean('InterventionSession1.csv','2025-10-26 19:00:00', '2025-10-26 20:59:59','PA_20251026.csv')
+purpleAirTools.PAclean('ControlSession2.csv','2025-11-01 19:00:00', '2025-11-01 20:59:59','PA_20251101.csv')
+purpleAirTools.PAclean('InterventionSession2.csv','2025-11-02 20:00:00', '2025-11-02 21:59:59','PA_20251102.csv')
 
 #joining cleaned purpleair data into master list
-purpleAirTools.PAJoin('PurpleAirMaster.csv','ControlTrial1.csv','InterventionTrial1.csv','ControlTrial2.csv','InterventionTrial2.csv')
+purpleAirTools.PAJoin('PurpleAirMaster.csv','ControlSession1.csv','InterventionSession1.csv','ControlSession2.csv','InterventionSession2.csv')
