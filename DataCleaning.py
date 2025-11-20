@@ -5,12 +5,7 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 #creating dictionaries for labeling purposes
-variableDictionary = {
 
-    'opc_pm25':'PM2.5 from Optical Particle Counter (ug/m3)',
-    'opc_pm10':'PM10 from Optical Particle Counter (ug/m3)',
-    'timestamp_iso':'Time (UTC)'
-    }
 labelDictionary ={}
 locationDictionary={}
 treatmentDictionary={}
