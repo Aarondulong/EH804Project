@@ -1,4 +1,4 @@
-Time_Stamp,Instrument_ID,Prox_to_xroad,Date,Time,Condition,Session,IAQ
+Time_Stamp,Instrument_ID,Prox_to_xroad,Date,Time,Condition,Session,IAQ_0-500
 1,PurpleAir_Zen,Away,2025-10-26,19:00:04,Intervention,Session 1,74.59
 2,PurpleAir_Zen,Away,2025-10-26,19:02:04,Intervention,Session 1,75.2
 3,PurpleAir_Zen,Away,2025-10-26,19:04:04,Intervention,Session 1,74.36

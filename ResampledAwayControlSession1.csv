@@ -1,4 +1,4 @@
-Time_Stamp,Instrument_ID,Date,Time,Condition,Session,Prox_to_xroad,Relative_Humidity,Temperature,PM25,PM10
+Time_Stamp,Instrument_ID,Date,Time,Condition,Session,Prox_to_xroad,Relative_Humidity_%,Temperature_C,PM25_ug/m3,PM10_ug/m3
 1,384,2025-10-25,19:00:00,Control,Session 1,Away,30.434166666666666,19.028333333333332,0.42416666666666664,0.54
 2,384,2025-10-25,19:01:00,Control,Session 1,Away,29.264166666666668,19.040000000000003,0.5995,1.1460833333333333
 3,384,2025-10-25,19:02:00,Control,Session 1,Away,29.26,19.0775,0.47341666666666665,1.1480833333333333

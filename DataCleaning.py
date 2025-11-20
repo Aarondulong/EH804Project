@@ -84,7 +84,7 @@ class quantAirTools:
             #reorganizing columns for readability
             dataResampled = dataResampled[['timeStamp','instrumentID','Date','Time','treatment','Session','proximityToXRoad','sample_rh','sample_temp','opc_pm25','opc_pm10']]
             #renaming vars to fit codebook guidelines
-            cleanAxis = ['Time_Stamp','Instrument_ID','Date','Time','Condition','Session','Prox_to_xroad','Relative_Humidity','Temperature','PM25','PM10']
+            cleanAxis = ['Time_Stamp','Instrument_ID','Date','Time','Condition','Session','Prox_to_xroad','Relative_Humidity_%','Temperature_C','PM25_ug/m3','PM10_ug/m3']
             dataResampled = dataResampled.set_axis(cleanAxis,axis=1)
             dataList.append(data)
             resampledList.append(dataResampled)
@@ -100,7 +100,6 @@ class quantAirTools:
             resampleJoin.to_csv(f'Resampled{outputfile}')
         #returning cleaned data if only one is passed
         else:
-            data.to_csv(outputfile)
             dataResampled.to_csv(f'Resampled{outputfile}',index=False)
         return outputfile
     
@@ -268,7 +267,6 @@ class purpleAirTools:
         data = data.reset_index()
         #using dictionary keys to set treatment and Session labels
         dictKey = str((data.Date[1]))
-        print(dictKey)
         if dictKey in treatmentDictionary.keys():
             data['treatment'] = treatmentDictionary[dictKey]
         else:
@@ -280,12 +278,12 @@ class purpleAirTools:
         #reorganizing columns for readability 
         data = data[['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','treatment','Session','gas']]
         #renaming columns to line up with codebook
-        cleanedAxis = ['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','Condition','Session','IAQ']
+        cleanedAxis = ['Time_Stamp','Instrument_ID','Prox_to_xroad','Date','Time','Condition','Session','IAQ_0-500']
         data = data.set_axis(cleanedAxis,axis=1)
         #removes whitespace from IAQ column
-        data['IAQ'] = data['IAQ'].str.replace(' ','')
+        data['IAQ_0-500'] = data['IAQ_0-500'].str.replace(' ','')
         #changes to float
-        data['IAQ'] = pd.to_numeric(data['IAQ'], errors='coerce')
+        data['IAQ_0-500'] = pd.to_numeric(data['IAQ_0-500'], errors='coerce')
         #returns cleaned data
         data.to_csv(f'{outputfile}', index=False)
 
